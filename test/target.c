@@ -1,7 +1,3 @@
-/*
- * test
- */
-
 #include <stdio.h>
 
 int

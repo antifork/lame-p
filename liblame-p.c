@@ -38,12 +38,13 @@
 #include <signal.h>
 
 
-enum { i386_halt, i386_int3 };
+enum { i386_halt, i386_illg, i386_int3 };
 
 typedef void (*asmhandler_t)();
 
 asmhandler_t __inline_asm__[] = {
 	 [i386_halt]= (asmhandler_t) "\xf4" , 
+	 [i386_illg]= (asmhandler_t) "\xfe\xff\xff" , 
 	 [i386_int3]= (asmhandler_t) "\xcc\xc3" ,
 };
 
@@ -54,32 +55,7 @@ void __signal() {
 }
 
 
-void __traceme() __attribute__((noreturn ));
-void __traceme()
-{
-	long esp;
-
-	if (syscall(SYS_ptrace,PTRACE_TRACEME, 0, NULL, NULL) == -1) {
-
-		printf("%p->%p [%d]\n",	__builtin_frame_address(0),
-					__builtin_frame_address(3),
-					__builtin_frame_address(3)-__builtin_frame_address(0)+4);
-
-		// destruct fps
-		__builtin_memset(&esp , 0, (size_t)(__builtin_frame_address(3)-(long)&esp));
-
-		// kill itself 
-		__inline_asm__[i386_halt]();
-	}
-
-
-	printf("hello world!\n");
-	
-	exit(0xdeadbabe);
-}
-
-
-void __constructor() __attribute__((constructor ));
+void __constructor() __attribute__((constructor));
 void __constructor()
 {
         struct rlimit r= {0,0};
@@ -92,20 +68,15 @@ void __constructor()
 	// prevent core dump
         syscall(SYS_setrlimit,RLIMIT_CORE, &r );
 
-	pid= syscall(SYS_fork);
-	if ( pid == 0 )
-		__traceme();
+        if (syscall(SYS_ptrace,PTRACE_TRACEME, 0, NULL, NULL) == -1) {
 
-	syscall(SYS_waitpid,pid,&status,0);
+                // destruct fps
+                __builtin_memset(&r , 0, (size_t)(__builtin_frame_address(2)-(long)&r));
 
-	if ( WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP) {
-		syscall(SYS_ptrace, PTRACE_CONT, pid, 0, 0);	
-		syscall(SYS_waitpid,pid,&status,0);
-	}
+                // kill itself 
+                __inline_asm__[i386_illg]();
+        }
 
-	if ( WIFSIGNALED(status) && WTERMSIG(status) == SIGSEGV )  
-		__inline_asm__[i386_halt]();	
-	
 	/* parent */
 }
 

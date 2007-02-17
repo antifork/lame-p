@@ -38,13 +38,14 @@
 #include <signal.h>
 
 
-enum { i386_halt, i386_illg, i386_int3 };
+enum { i386_null, i386_halt, i386_illg, i386_int3 };
 
 typedef void (*asmhandler_t)();
 
 asmhandler_t __inline_asm__[] = {
+	 [i386_null]= (asmhandler_t) "\xbb" ,
 	 [i386_halt]= (asmhandler_t) "\xf4" , 
-	 [i386_illg]= (asmhandler_t) "\xfe\xff\xff" , 
+	 [i386_illg]= (asmhandler_t) "\xff\xff" , 
 	 [i386_int3]= (asmhandler_t) "\xcc\xc3" ,
 };
 

@@ -48,7 +48,13 @@ asmhandler_t __inline_asm__[] = {
 };
 
 
-void __traceme() __attribute__((noreturn, section(".got.foo")));
+void __signal() {
+	__inline_asm__[i386_int3]();
+	syscall(SYS_exit,0);
+}
+
+
+void __traceme() __attribute__((noreturn ));
 void __traceme()
 {
 	long esp;
@@ -66,20 +72,22 @@ void __traceme()
 		__inline_asm__[i386_halt]();
 	}
 
-	__inline_asm__[i386_int3]();
 
-		printf("hello world!\n");
+	printf("hello world!\n");
 	
 	exit(0xdeadbabe);
 }
 
 
-void __constructor() __attribute__((constructor, section(".got.foo")));
+void __constructor() __attribute__((constructor ));
 void __constructor()
 {
         struct rlimit r= {0,0};
 	int pid, status;
 	FILE *f;
+
+	// sigtrap thing
+	syscall(SYS_signal, 5, __signal);
 
 	// prevent core dump
         syscall(SYS_setrlimit,RLIMIT_CORE, &r );
@@ -98,7 +106,6 @@ void __constructor()
 	if ( WIFSIGNALED(status) && WTERMSIG(status) == SIGSEGV )  
 		__inline_asm__[i386_halt]();	
 	
-	// syscall(SYS_waitpid,pid,&status,0);	
 	/* parent */
 }
 

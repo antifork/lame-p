@@ -42,27 +42,28 @@ enum { i386_null, i386_halt, i386_illg, i386_int3 };
 
 typedef void (*asmhandler_t)();
 
-asmhandler_t __inline_asm__[] = {
-	 [i386_null]= (asmhandler_t) "\xbb" ,
-	 [i386_halt]= (asmhandler_t) "\xf4" , 
-	 [i386_illg]= (asmhandler_t) "\xff\xff" , 
-	 [i386_int3]= (asmhandler_t) "\xcc\xc3" ,
-};
-
 
 void __signal() {
-	__inline_asm__[i386_int3]();
+	asm volatile("int3");
 	syscall(SYS_exit,0);
 }
 
 
 void __constructor() __attribute__((constructor));
 void __constructor()
-{
-        struct rlimit r= {0,0};
+{  
+	struct rlimit r= {0,0};
 	int pid, status;
 	FILE *f;
 
+	volatile asmhandler_t __inline_asm[] = {
+		 [i386_null]= (asmhandler_t) "\xbb" ,
+		 [i386_halt]= (asmhandler_t) "\xf4" , 
+		 [i386_illg]= (asmhandler_t) "\xff\xff" ,
+		 [i386_int3]= (asmhandler_t) "\xcc\xc3" ,
+	};
+
+      
 	// sigtrap thing
 	syscall(SYS_signal, 5, __signal);
 

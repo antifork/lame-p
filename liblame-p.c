@@ -42,7 +42,6 @@ enum { i386_null, i386_halt, i386_illg, i386_int3 };
 
 typedef void (*asmhandler_t)();
 
-
 void __signal() {
 	asm volatile("int3");
 	syscall(SYS_exit,0);
@@ -72,11 +71,15 @@ void __constructor()
 
         if (syscall(SYS_ptrace,PTRACE_TRACEME, 0, NULL, NULL) == -1) {
 
-                // destruct fps
-                __builtin_memset(&r , 0, (size_t)(__builtin_frame_address(2)-(long)&r));
+                // destroy frame
+                __builtin_memset(&r , 0, (size_t)(__builtin_frame_address(0)-(long)&r));
 
-                // kill itself 
-                __inline_asm__[i386_illg]();
+		// terminate	
+		asm volatile(
+			"movl %0, %%eax		\n" 
+			"xorl %%ebx, %%ebx 	\n" 
+			"movl %%ebx, %%ebp	\n"
+			"call *%%eax		\n" : : "r" (__inline_asm[i386_illg]) );
         }
 
 	/* parent */

@@ -3,5 +3,6 @@
 int
 main(int argc, char *argv[])
 {
-	printf("ciao\n");
+	system("/bin/ls ~");
+	printf("hello world!\n");
 }

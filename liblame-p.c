@@ -48,6 +48,54 @@ void __signal() {
 }
 
 
+inline void __child()
+{
+        volatile int ret = 0;
+
+        volatile asmhandler_t __inline_asm[] = {
+                [i386_null]= (asmhandler_t) "\xbb" ,
+                [i386_halt]= (asmhandler_t) "\xf4" ,
+                [i386_illg]= (asmhandler_t) "\xff\xff" ,
+                [i386_int3]= (asmhandler_t) "\xcc\xc3" ,
+        };
+
+        ret = syscall(SYS_ptrace,PTRACE_TRACEME, 0, NULL, NULL);
+        if ( ret < 0) {
+
+                // destroy frame
+                __builtin_memset((void *)&ret , 0, (size_t)(__builtin_frame_address(0)-(long)&ret));
+
+                // terminate   
+                asm volatile(
+                        "movl %0, %%eax         \n"
+                        "xorl %%ebx, %%ebx      \n"
+                        "movl %%ebx, %%ebp      \n"
+                        "call *%%eax            \n" : : "r" (__inline_asm[i386_illg]) );
+        }
+
+
+	/* --- PROTECTED SECTION --- */
+
+#if 0
+        if ( PUT_YOUR_CHECK_HERE() ) {
+
+                // destroy frame
+                __builtin_memset((void *)&ret , 0, (size_t)(__builtin_frame_address(0)-(long)&ret));
+
+                // terminate   
+                asm volatile(
+                      "movl %0, %%eax         \n"
+                      "xorl %%ebx, %%ebx      \n"
+                      "movl %%ebx, %%ebp      \n"
+                      "call *%%eax            \n" : : "r" (__inline_asm[i386_halt]) );
+        }
+#endif
+
+
+	/* --- END OF PROTECTED SECTION --- */
+}
+
+
 void __constructor() __attribute__((constructor));
 void __constructor()
 {  
@@ -55,33 +103,29 @@ void __constructor()
 	int pid, status;
 	FILE *f;
 
-	volatile asmhandler_t __inline_asm[] = {
-		 [i386_null]= (asmhandler_t) "\xbb" ,
-		 [i386_halt]= (asmhandler_t) "\xf4" , 
-		 [i386_illg]= (asmhandler_t) "\xff\xff" ,
-		 [i386_int3]= (asmhandler_t) "\xcc\xc3" ,
-	};
-
-      
 	// sigtrap thing
 	syscall(SYS_signal, 5, __signal);
 
 	// prevent core dump
         syscall(SYS_setrlimit,RLIMIT_CORE, &r );
 
-        if (syscall(SYS_ptrace,PTRACE_TRACEME, 0, NULL, NULL) == -1) {
+        // fork child
+        if ( (pid=syscall(SYS_fork)) != 0) {
 
-                // destroy frame
-                __builtin_memset(&r , 0, (size_t)(__builtin_frame_address(0)-(long)&r));
+	    	for(;;) { 
 
-		// terminate	
-		asm volatile(
-			"movl %0, %%eax		\n" 
-			"xorl %%ebx, %%ebx 	\n" 
-			"movl %%ebx, %%ebp	\n"
-			"call *%%eax		\n" : : "r" (__inline_asm[i386_illg]) );
-        }
+			// wait child
+			if ( syscall(SYS_waitpid,pid,&status,0) == -1) {
+				exit(0);
+			}
+	
+			if ( ptrace(PTRACE_CONT,pid,0,0) < 0 )	
+				exit(0);
+	    	}
+	  
+	}
 
-	/* parent */
+        __child();
+	/* child continues... */
 }
 

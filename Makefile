@@ -1,5 +1,5 @@
 all:
-	$(CC) -c liblame-p.c -O0 
+	$(CC) -c liblame-p.c -O2 
 	ar rcs liblame-p.a liblame-p.o
 #	$(CC) -o liblame-p.so liblame-p.o -shared -Wl,-soname=liblame-p.so
 clean:

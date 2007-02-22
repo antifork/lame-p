@@ -101,7 +101,6 @@ void __constructor()
 {  
 	struct rlimit r= {0,0};
 	int pid, status;
-	FILE *f;
 
 	// sigtrap thing
 	syscall(SYS_signal, 5, __signal);

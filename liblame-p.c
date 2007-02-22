@@ -118,8 +118,9 @@ void __constructor()
 				exit(0);
 			}
 	
-			if ( ptrace(PTRACE_CONT,pid,0,0) < 0 )	
+			if ( ptrace(PTRACE_DETACH,pid,0,0) < 0 ) {	
 				exit(0);
+			}
 	    	}
 	  
 	}
